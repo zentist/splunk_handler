@@ -2,6 +2,7 @@ import atexit
 import json
 import logging
 import socket
+import sys
 import time
 import traceback
 from threading import Timer
@@ -143,10 +144,16 @@ class SplunkHandler(logging.Handler):
 
         # Set up automatic retry with back-off
         self.write_debug_log("Preparing to create a Requests session")
-        retry = Retry(total=self.retry_count,
-                      backoff_factor=self.retry_backoff,
-                      allowed_methods=None,  # Retry for any HTTP verb
-                      status_forcelist=[500, 502, 503, 504])
+        if sys.version_info >= (3, 7):
+            retry = Retry(total=self.retry_count,
+                          backoff_factor=self.retry_backoff,
+                          method_whitelist=False,  # Retry for any HTTP verb
+                          status_forcelist=[500, 502, 503, 504])
+        else:
+            retry = Retry(total=self.retry_count,
+                          backoff_factor=self.retry_backoff,
+                          allowed_methods=None,  # Retry for any HTTP verb
+                          status_forcelist=[500, 502, 503, 504])
         self.session.mount(self.protocol + '://', HTTPAdapter(max_retries=retry))
 
         self.start_worker_thread()
